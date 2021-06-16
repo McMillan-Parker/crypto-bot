@@ -3,13 +3,11 @@ import os
 import datetime
 import time
 
-#Open pass and user files, login to robinhood
-file = open("config.txt")
-configdata = file.readlines()
-file.close()
+user = input("Username: ")
+pswd = input("Password: ")
 
-rs.robinhood.authentication.login(username=configdata[1],
-         password = configdata[3],
+rs.robinhood.authentication.login(username=user,
+         password = pswd,
          expiresIn=86400,
          by_sms=True)
 
@@ -44,23 +42,15 @@ def checkBalance():
     print("Cash Balance: ")
     print("$" + cashBalance)
 
-#Next up: Buy crypto x if crypto x drops 5% in a 24 hour window:
-#Small steps:
-'''
-Check crypto x price every minute, store in timetable list
-There are 1440 minutes in a day, so the list should contain 1440 values
-'''
-
 #buy crypto if it falls 5% in a day
 def buyAlgo():
     file = open("config.txt")
     configdata = file.readlines()
-    buyPercent = configdata[5]
+    buyPercent = configdata[1]
     file.close()
-    #initial list setup:
-    pricetableBTC = list(range(1440))
-    for x in range(0,1440):
-        pricetableBTC[x] = 0
+    #initial setup:
+    intialPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+    print("Intital BTC Price: $" + str(initalPriceBTC) + ".")
     now = datetime.datetime.now()
     currentminute = (now.hour * 60) + now.minute
     startMinute = currentminute
@@ -70,12 +60,12 @@ def buyAlgo():
     while True:
         now = datetime.datetime.now()
         currentminute = (now.hour * 60) + now.minute
-        pricetableBTC[currentminute] = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
         #the next three lines just check if I've already printed info about the current minute.
         if minuteLoop != currentminute:
-            print("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + ".")
+            print(str(now.hour) + ":" + str(now.minute) + ". Current BTC Price: $" + str(currentPriceBTC) + ".")
         minuteLoop = currentminute
-        percentage = float(pricetableBTC[currentminute])/float(pricetableBTC[startMinute]) -1
+        percentage = float(currentPriceBTC)/float(initialPriceBTC) -1
         if (percentage <= (float(buyPercent)/(-100))):
             print("Price has fallen " + str(abs(percentage*100)) + "% within the last 24 hours. Buying BTC now.")
             buyCrypto()
@@ -85,12 +75,11 @@ def buyAlgo():
 def sellAlgo():
     file = open("config.txt")
     configdata = file.readlines()
-    sellPercent = configdata[7]
+    sellPercent = configdata[3]
     file.close()
-    #initial list setup:
-    pricetableBTC = list(range(1440))
-    for x in range(0,1440):
-        pricetableBTC[x] = 0
+    #initial setup:
+    initialPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+    print("Intital BTC Price: $" + str(initialPriceBTC) + ".")
     now = datetime.datetime.now()
     currentminute = (now.hour * 60) + now.minute
     startMinute = currentminute
@@ -100,12 +89,12 @@ def sellAlgo():
     while True:
         now = datetime.datetime.now()
         currentminute = (now.hour * 60) + now.minute
-        pricetableBTC[currentminute] = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
         #the next three lines just check if I've already printed info about the current minute.
         if minuteLoop != currentminute:
-            print("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + ".")
+            print(str(now.hour) + ":" + str(now.minute) + ". Current BTC Price: $" + str(currentPriceBTC) + ".")
         minuteLoop = currentminute
-        percentage = float(pricetableBTC[currentminute])/float(pricetableBTC[startMinute]) -1
+        percentage = float(currentPriceBTC)/float(initialPriceBTC) -1
         if (percentage >= (float(sellPercent)/100)):
             print("Price has risen " + str(abs(percentage*100)) + "% within the last 24 hours. Selling BTC now.")
             sellCrypto()
