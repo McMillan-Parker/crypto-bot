@@ -45,26 +45,30 @@ def checkBalance():
 #buy crypto if it falls 5% in a day
 def buyAlgo():
     file = open("config.txt")
-    configdata = file.readlines()
-    buyPercent = configdata[1]
+    configData = file.readlines()
+    buyPercent = configData[1]
     file.close()
     #initial setup:
     intialPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+    currentPriceBTC = initialPriceBTC
     print("Intital BTC Price: $" + str(initalPriceBTC) + ".")
     now = datetime.datetime.now()
-    currentminute = (now.hour * 60) + now.minute
-    startMinute = currentminute
+    currentMinute = (now.hour * 60) + now.minute
+    startMinute = currentMinute
     #this var is used below:
     minuteLoop = 0
     #compare this current data point to all other data points in list. If it is differed by 5% or more, submit a buy order for BTC. Reset the price table.
     while True:
         now = datetime.datetime.now()
-        currentminute = (now.hour * 60) + now.minute
-        currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        currentMinute = (now.hour * 60) + now.minute
+        try:
+            currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        except:
+            pass
         #the next three lines just check if I've already printed info about the current minute.
-        if minuteLoop != currentminute:
+        if minuteLoop != currentMinute:
             print(str(now.hour) + ":" + str(now.minute) + ". Current BTC Price: $" + str(currentPriceBTC) + ".")
-        minuteLoop = currentminute
+        minuteLoop = currentMinute
         percentage = float(currentPriceBTC)/float(initialPriceBTC) -1
         if (percentage <= (float(buyPercent)/(-100))):
             print("Price has fallen " + str(abs(percentage*100)) + "% within the last 24 hours. Buying BTC now.")
@@ -74,26 +78,30 @@ def buyAlgo():
 
 def sellAlgo():
     file = open("config.txt")
-    configdata = file.readlines()
-    sellPercent = configdata[3]
+    configData = file.readlines()
+    sellPercent = configData[3]
     file.close()
     #initial setup:
     initialPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+    currentPriceBTC = initialPriceBTC
     print("Intital BTC Price: $" + str(initialPriceBTC) + ".")
     now = datetime.datetime.now()
-    currentminute = (now.hour * 60) + now.minute
-    startMinute = currentminute
+    currentMinute = (now.hour * 60) + now.minute
+    startMinute = currentMinute
     #this var is used below:
     minuteLoop = 0
     #compare this current data point to all other data points in list. If it is differed by 5% or more, submit a buy order for BTC. Reset the price table.
     while True:
         now = datetime.datetime.now()
-        currentminute = (now.hour * 60) + now.minute
-        currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        currentMinute = (now.hour * 60) + now.minute
+        try:
+            currentPriceBTC = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
+        except:
+            pass
         #the next three lines just check if I've already printed info about the current minute.
-        if minuteLoop != currentminute:
+        if minuteLoop != currentMinute:
             print(str(now.hour) + ":" + str(now.minute) + ". Current BTC Price: $" + str(currentPriceBTC) + ".")
-        minuteLoop = currentminute
+        minuteLoop = currentMinute
         percentage = float(currentPriceBTC)/float(initialPriceBTC) -1
         if (percentage >= (float(sellPercent)/100)):
             print("Price has risen " + str(abs(percentage*100)) + "% within the last 24 hours. Selling BTC now.")
