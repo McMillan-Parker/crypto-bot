@@ -111,7 +111,7 @@ def sellAlgo():
 
 def buyCrypto():
     cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
-    amountInDollars = float(cashAvailable)
+    amountInDollars = float(cashAvailable) * .98
     rs.robinhood.orders.order_buy_crypto_by_price('BTC', amountInDollars, timeInForce='gtc')
     print("Sent request to purchase $" + str(amountInDollars) + " worth of BTC.")
     qlist = rs.robinhood.crypto.get_crypto_positions(info="quantity_available")
