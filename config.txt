@@ -1,4 +1,0 @@
-Buy when falls x%:
-.5
-Sell when rises x%:
-.5
