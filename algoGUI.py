@@ -56,16 +56,16 @@ def buyAlgo(BTCdrop):
         pricetableBTC[currentminute] = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
         #the next three lines just check if I've already printed info about the current minute.
         if minuteLoop != currentminute:
-            window['multiline'].update(value=("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + "." + '\n'), append=True)
-            window.refresh()
+            windowSimple['multiline'].update(value=("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + "." + '\n'), append=True)
+            windowSimple.refresh()
         minuteLoop = currentminute
         percentage = float(pricetableBTC[currentminute])/float(pricetableBTC[startMinute]) -1
         if (percentage <= (float(buyPercent)/(-100))):
-            window['multiline'].update(value=("Price has fallen " + str(abs(percentage*100)) + "% within the last 24 hours. Buying BTC now." + '\n'), append=True)
-            window.refresh()
+            windowSimple['multiline'].update(value=("Price has fallen " + str(abs(percentage*100)) + "% within the last 24 hours. Buying BTC now." + '\n'), append=True)
+            windowSimple.refresh()
             buyCrypto()
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
-        window.read(timeout=59000)
+        windowSimple.read(timeout=59000)
 
 def sellAlgo(BTCrise):
     sellPercent = BTCrise
@@ -85,16 +85,16 @@ def sellAlgo(BTCrise):
         pricetableBTC[currentminute] = rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")
         #the next three lines just check if I've already printed info about the current minute.
         if minuteLoop != currentminute:
-            window['multiline'].update(value=("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + "." + '\n'), append=True)
-            window.refresh()
+            windowSimple['multiline'].update(value=("Minute " + str(currentminute) + ": $" + str(pricetableBTC[currentminute]) + "." + '\n'), append=True)
+            windowSimple.refresh()
         minuteLoop = currentminute
         percentage = float(pricetableBTC[currentminute])/float(pricetableBTC[startMinute]) -1
         if (percentage >= (float(sellPercent)/100)):
-            window['multiline'].update(value=("Price has risen " + str(abs(percentage*100)) + "% within the last 24 hours. Selling BTC now." + '\n'), append=True)
-            window.refresh()
+            windowSimple['multiline'].update(value=("Price has risen " + str(abs(percentage*100)) + "% within the last 24 hours. Selling BTC now." + '\n'), append=True)
+            windowSimple.refresh()
             sellCrypto()
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
-        window.read(timeout=59000)
+        windowSimple.read(timeout=59000)
 
 def buyCrypto():
     cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
@@ -110,68 +110,77 @@ def sellCrypto():
     print("Sent request to sell " + str(BTCquantity) + " BTC at a price of $" + str(rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")) + " per BTC")
     runAlgo()
 
-def runAlgo(BTCrise, BTCdrop):
+def runAlgo(BTCdrop, BTCrise):
     cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
     qlist = rs.robinhood.crypto.get_crypto_positions(info="quantity_available")
     #using $5 since sometimes there's residual cash that would be inefficient to play with/would cause problems due to tolerances.
     if float(cashAvailable) > 5:
-        window['multiline'].update(value=('More than $5 is in your account. Looking for an ideal time to buy crypto now.' + '\n'), append=True)
-        window.refresh()
+        windowSimple['multiline'].update(value=('More than $5 is in your account. Looking for an ideal time to buy crypto now.' + '\n'), append=True)
+        windowSimple.refresh()
         buyAlgo(BTCdrop)
     elif (float(cashAvailable) <= 5) and (float(qlist[0]) > 0):
-        window['multiline'].update(value=('Less than $5 is in your account but you have cryptocurrency present. Looking for an ideal time to sell crypto now.' + '\n'), append=True)
-        window.refresh()
+        windowSimple['multiline'].update(value=('Less than $5 is in your account but you have cryptocurrency present. Looking for an ideal time to sell crypto now.' + '\n'), append=True)
+        windowSimple.refresh()
         sellAlgo(BTCrise)
     else:
         print("You don't have money in your account and you don't have cryptocurrency in your account. Can't operate.")
-        window['multiline'].update(value=("You don't have money in your account and you don't have cryptocurrency in your account. Can't operate." + '\n'), append=True)
-        window.refresh()
-
-
-
-def runProgram(BTCdrop, BTCrise, username, password):
-    window.refresh()
-    window.refresh()
-    rs.robinhood.authentication.login(username=username,
-         password = password,
-         expiresIn=86400,
-         by_sms=True)
-    window.refresh()
-    window['multiline'].update(value=('Start time: ' + str(datetime.datetime.now()) + '\n'), append=True)
-    window.refresh()
+        windowSimple['multiline'].update(value=("You don't have money in your account and you don't have cryptocurrency in your account. Can't operate." + '\n'), append=True)
+        windowSimple.refresh()
+        
+def runProgram(BTCdrop, BTCrise):
+    windowSimple.refresh()
+    windowSimple['multiline'].update(value=('Start time: ' + str(datetime.datetime.now()) + '\n'), append=True)
+    windowSimple.refresh()
     balance = checkBalance()
     cashBalance = balance[0]
     BTCbalance = balance[1]
-    window['multiline'].update(value=('Current Cash balance: $' + str(cashBalance) + '\n'), append=True)
-    window['multiline'].update(value=('Current BTC balance: ' + str(BTCbalance) + 'BTC \n'), append=True)
-    window.refresh()
-    runAlgo(BTCrise, BTCdrop)
+    windowSimple['multiline'].update(value=('Current Cash balance: $' + str(cashBalance) + '\n'), append=True)
+    windowSimple['multiline'].update(value=('Current BTC balance: ' + str(BTCbalance) + 'BTC \n'), append=True)
+    windowSimple.refresh()
+    runAlgo(BTCdrop, BTCrise)
     
-
-
 sg.theme('Dark Blue 3')   # Add a touch of color
-# All the stuff inside your window.
-layout = [  [sg.Text('If BTC drops '), sg.InputText(size=(3,1)), sg.Text('%, buy.')],
-            [sg.Text('If BTC rises '), sg.InputText(size=(3,1)), sg.Text('%, sell.')],
-            [sg.Text('Login Info:')],
-            [sg.Text('username: ', size=(7,1)), sg.InputText()],
-            [sg.Text('password: ', size=(7,1)), sg.InputText(password_char='*')],
-            [sg.Button('GO')],
-            [sg.Multiline(size=(50,6), key='multiline', disabled=True)]  ]
 
-# Create the Window
-window = sg.Window('RobinStocks', layout)
-# Event Loop to process "events" and get the "values" of the inputs
+layoutLogin = [  [sg.Text('Login Info:')],
+                 [sg.Text('username: ', size=(7,1)), sg.InputText()],
+                 [sg.Text('password: ', size=(7,1)), sg.InputText(password_char='*')],
+                 [sg.Button('GO')]  ]
+windowLogin = sg.Window('Login', layoutLogin)
+windowLogin.finalize()
 while True:
-    event, values = window.read()
+    event, values = windowLogin.read()
     if event == 'GO':
-        BTCdrop = values[0]
-        BTCrise = values[1]
-        username = values[2]
-        password = values[3]
+        username = values[0]
+        password = values[1]
         #pass values[1-3] through... percentiles and login info
-        runProgram(BTCdrop, BTCrise, username, password)
+        rs.robinhood.authentication.login(username=username,
+         password = password,
+         expiresIn=86400,
+         by_sms=True)
+        # All the stuff inside your window.
+        layout = [  [sg.Text('If BTC drops '), sg.InputText(size=(3,1)), sg.Text('%, buy.')],
+                    [sg.Text('If BTC rises '), sg.InputText(size=(3,1)), sg.Text('%, sell.')],
+                    [sg.Button('GO')],
+                    [sg.Multiline(size=(50,6), key='multiline', disabled=True)]  ]
+        # Create the Window
+        windowSimple = sg.Window('Simple Algorithm', layout)
+        windowSimple.finalize()
+        windowLogin.close()
+        del windowLogin
+        windowSimple.BringToFront()
+        # Event Loop to process "events" and get the "values" of the inputs
+        while True:
+            event, values = windowSimple.read()
+            if event == 'GO':
+                BTCdrop = values[0]
+                BTCrise = values[1]
+                #pass values[0-1] (percentiles) through... 
+                runProgram(BTCdrop, BTCrise)
+            elif event == sg.WIN_CLOSED: # if user closes window
+                break
     elif event == sg.WIN_CLOSED: # if user closes window
         break
+
+
 
 window.close()
