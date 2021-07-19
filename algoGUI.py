@@ -8,8 +8,10 @@ import time
 FUNCTIONS UTILIZED BY ALL
 '''
 
+determineAlgo = ''
+
 def checkBalance():
-    cashBalance = rs.robinhood.profiles.load_account_profile(info="cash")
+    cashBalance = rs.robinhood.profiles.load_account_profile(info="portfolio_cash")
     currency_list=rs.robinhood.crypto.get_crypto_positions(info="currency")
     #Turn this list of lists into individual lists to make data retrieval possible:
     cvals = [list(currency_list[0].values()), list(currency_list[1].values()), list(currency_list[2].values()), list(currency_list[3].values())]
@@ -41,26 +43,26 @@ def getCurrentPortfolio():
             print("unknown currency: ")
         print(qlist[x])
 
-def buyCrypto():
-    cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
+def buyCrypto(window):
+    cashAvailable = rs.robinhood.profiles.load_account_profile(info="portfolio_cash")
     amountInDollars = float(cashAvailable)
     rs.robinhood.orders.order_buy_crypto_by_price('BTC', amountInDollars, timeInForce='gtc')
     print("Sent request to purchase $" + str(amountInDollars) + " worth of BTC.")
-    chooseRunAlgo()
+    chooseRunAlgo(window)
 
-def sellCrypto():
+def sellCrypto(window):
     qlist = rs.robinhood.crypto.get_crypto_positions(info="quantity_available")
     BTCquantity = float(qlist[0])
     rs.robinhood.orders.order_sell_crypto_by_quantity('BTC', BTCquantity, timeInForce='gtc')
     print("Sent request to sell " + str(BTCquantity) + " BTC at a price of $" + str(rs.robinhood.crypto.get_crypto_quote("BTC", info="ask_price")) + " per BTC")
-    chooseRunAlgo()
+    chooseRunAlgo(window)
 
-def chooseRunAlgo():
+def chooseRunAlgo(window):
     #determine whether to go to runSimpleAlgo, runVelAlgo, runAccelAlgo, or runfcAlgo
     if determineAlgo == 'simple':
-        runSimpleAlgo()
+        runSimpleAlgo(window)
     elif determineAlgo == 'velocity':
-        runVelAlgo()
+        runVelAlgo(window)
 
 '''
 START VELOCITY ALGO STUFF
@@ -70,10 +72,10 @@ def velAlgoWindow():
     global determineAlgo
     determineAlgo = 'velocity'
     # All the stuff inside your window.
-    layoutVelocity = [  [sg.Text('If BTC drops '), sg.InputText(size=(3,1)), sg.Text('% in a '), sg.InputText(size=(3,1)), sg.Text('minute period, buy.')],
-                        [sg.Text('If BTC rises '), sg.InputText(size=(3,1)), sg.Text('% in a '), sg.InputText(size=(3,1)), sg.Text('minute period, sell.')],
+    layoutVelocity = [  [sg.Text('If BTC drops '), sg.InputText(size=(3,1)), sg.Text('% in a '), sg.InputText(size=(3,1)), sg.Text('minute period, sell.')],
+                        [sg.Text('If BTC rises '), sg.InputText(size=(3,1)), sg.Text('% in a '), sg.InputText(size=(3,1)), sg.Text('minute period, buy.')],
                         [sg.Button('GO')],
-                        [sg.Multiline(size=(50,6), key='multiline', disabled=True)]  ]
+                        [sg.Multiline(size=(50,6), key='multiline', disabled=True, autoscroll=True)]  ]
     # Create the Window
     windowVelocity = sg.Window('Velocity Algorithm', layoutVelocity)
     windowVelocity.finalize()
@@ -82,16 +84,20 @@ def velAlgoWindow():
     while True:
         event, values = windowVelocity.read()
         if event == 'GO':
+            global BTCdrop
             BTCdrop = values[0]
+            global minutesDrop
             minutesDrop = values[1]
+            global BTCrise
             BTCrise = values[2]
+            global minutesRise
             minutesRise = values[3]
             #pass values[0-3] (percentiles, minutes) through... 
-            runVelAlgo(BTCdrop, minutesDrop, BTCrise, minutesRise, windowVelocity)
+            runVelAlgo(windowVelocity)
         elif event == sg.WIN_CLOSED: # if user closes window
             break
         
-def runVelAlgo(BTCdrop, minutesDrop, BTCrise, minutesRise, windowVelocity):
+def runVelAlgo(windowVelocity):
     #Startup stuff displayed in multiline textbox
     windowVelocity.refresh()
     windowVelocity['multiline'].update(value=('Start time: ' + str(datetime.datetime.now()) + '\n'), append=True)
@@ -103,23 +109,24 @@ def runVelAlgo(BTCdrop, minutesDrop, BTCrise, minutesRise, windowVelocity):
     windowVelocity['multiline'].update(value=('Current BTC balance: ' + str(BTCbalance) + 'BTC \n'), append=True)
     windowVelocity.refresh()
     
-    cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
+    cashAvailable = rs.robinhood.profiles.load_account_profile(info="portfolio_cash")
     qlist = rs.robinhood.crypto.get_crypto_positions(info="quantity_available")
     #using $5 since sometimes there's residual cash that would be inefficient to play with/would cause problems due to tolerances.
     if float(cashAvailable) > 5:
         windowVelocity['multiline'].update(value=('More than $5 is in your account. Looking for an ideal time to buy crypto now.' + '\n'), append=True)
         windowVelocity.refresh()
-        buyVelAlgo(BTCdrop, minutesDrop, windowVelocity)
+        buyVelAlgo(windowVelocity)
     elif (float(cashAvailable) <= 5) and (float(qlist[0]) > 0):
         windowVelocity['multiline'].update(value=('Less than $5 is in your account but you have cryptocurrency present. Looking for an ideal time to sell crypto now.' + '\n'), append=True)
         windowVelocity.refresh()
-        sellVelAlgo(BTCrise, minutesRise, windowVelocity)
+        sellVelAlgo(windowVelocity)
     else:
         windowVelocity['multiline'].update(value=("You don't have money in your account and you don't have cryptocurrency in your account. Can't operate." + '\n'), append=True)
         windowVelocity.refresh()
 
-def buyVelAlgo(BTCdrop, minutesDrop, windowVelocity):
-    buyPercent = float(BTCdrop) / 100
+def sellVelAlgo(windowVelocity):
+    windowVelocity.refresh()
+    sellPercent = float(BTCdrop) / 100
     #initial list setup:
     pricetableBTC = list(range(1440))
     for x in range(0,1440):
@@ -141,16 +148,17 @@ def buyVelAlgo(BTCdrop, minutesDrop, windowVelocity):
         minuteLoop = currentminute
         for x in range (int(minutesDrop), 0, -1):
             if (float(pricetableBTC[currentminute - x]) != 0):
-                if ((((float(pricetableBTC[currentminute])/float(pricetableBTC[currentminute - x])) -1) >= buyPercent)):
+                if ((((float(pricetableBTC[currentminute])/float(pricetableBTC[currentminute - x])) -1) >= sellPercent)):
                     windowVelocity['multiline'].update(value=("Price has fallen " + str((abs(float(prictableBTC[currentminute])/float(pricetableBTC[currentminute - x])) -1)*100)
-                                                              + "% in the last " + str(x) + " minutes. Buying BTC now." + '\n'), append=True)
+                                                              + "% in the last " + str(x) + " minutes. Selling BTC now." + '\n'), append=True)
                     windowVelocity.refresh()
-                    buyCrypto()
+                    sellCrypto(windowVelocity)
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
         windowVelocity.read(timeout=59000)
 
-def sellVelAlgo(BTCrise, minutesRise, windowVelocity):
-    sellPercent = float(BTCrise) / 100
+def buyVelAlgo(windowVelocity):
+    windowVelocity.refresh()
+    buyPercent = float(BTCrise) / 100
     #initial list setup:
     pricetableBTC = list(range(1440))
     for x in range(0,1440):
@@ -172,11 +180,11 @@ def sellVelAlgo(BTCrise, minutesRise, windowVelocity):
         minuteLoop = currentminute
         for x in range (int(minutesRise), 0, -1):
             if (float(pricetableBTC[currentminute - x]) != 0): 
-                if ((((float(pricetableBTC[currentminute])/float(pricetableBTC[currentminute - x])) -1) <= -sellPercent)):
+                if ((((float(pricetableBTC[currentminute])/float(pricetableBTC[currentminute - x])) -1) <= -buyPercent)):
                     windowVelocity['multiline'].update(value=("Price has risen " + str(abs(float(prictableBTC[currentminute])/float(pricetableBTC[currentminute - x]))*100)
                                                               + "% in the last "+str(x)+" minutes. Buying BTC now." + '\n'), append=True)
                     windowVelocity.refresh()
-                    sellCrypto()
+                    buyCrypto(windowVelocity)
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
         windowVelocity.read(timeout=59000)    
 
@@ -191,11 +199,13 @@ START SIMPLE ALGO STUFF
 '''
 
 def simpleAlgoWindow():
+    global determineAlgo
+    determineAlgo = 'simple'
     # All the stuff inside your window.
     layoutSimple = [  [sg.Text('If BTC drops '), sg.InputText(size=(3,1)), sg.Text('%, buy.')],
                         [sg.Text('If BTC rises '), sg.InputText(size=(3,1)), sg.Text('%, sell.')],
                         [sg.Button('GO')],
-                        [sg.Multiline(size=(50,6), key='multiline', disabled=True)]  ]
+                        [sg.Multiline(size=(50,6), key='multiline', disabled=True, autoscroll=True)]  ]
     # Create the Window
     windowSimple = sg.Window('Simple Algorithm', layoutSimple)
     windowSimple.finalize()
@@ -204,15 +214,19 @@ def simpleAlgoWindow():
     while True:
         event, values = windowSimple.read()
         if event == 'GO':
+            global BTCdrop
             BTCdrop = values[0]
+            global BTCrise
             BTCrise = values[1]
             #pass values[0-1] (percentiles) through... 
-            runSimpleAlgo(BTCdrop, BTCrise, windowSimple)
+            runSimpleAlgo(windowSimple)
         elif event == sg.WIN_CLOSED: # if user closes window
             break  
 
-def runSimpleAlgo(BTCdrop, BTCrise, windowSimple):
-
+def runSimpleAlgo(windowSimple):
+    while len((rs.robinhood.orders.get_all_open_crypto_orders(info=None))) != 0:
+        windowSimple.read(timeout=10000)
+    
     #Startup stuff displayed in multiline textbox
     windowSimple.refresh()
     windowSimple['multiline'].update(value=('Start time: ' + str(datetime.datetime.now()) + '\n'), append=True)
@@ -224,22 +238,22 @@ def runSimpleAlgo(BTCdrop, BTCrise, windowSimple):
     windowSimple['multiline'].update(value=('Current BTC balance: ' + str(BTCbalance) + 'BTC \n'), append=True)
     windowSimple.refresh()
     
-    cashAvailable = rs.robinhood.profiles.load_account_profile(info="cash")
+    cashAvailable = rs.robinhood.profiles.load_account_profile(info="portfolio_cash")
     qlist = rs.robinhood.crypto.get_crypto_positions(info="quantity_available")
     #using $5 since sometimes there's residual cash that would be inefficient to play with/would cause problems due to tolerances.
     if float(cashAvailable) > 5:
         windowSimple['multiline'].update(value=('More than $5 is in your account. Looking for an ideal time to buy crypto now.' + '\n'), append=True)
         windowSimple.refresh()
-        buySimpleAlgo(BTCdrop, windowSimple)
+        buySimpleAlgo(windowSimple)
     elif (float(cashAvailable) <= 5) and (float(qlist[0]) > 0):
         windowSimple['multiline'].update(value=('Less than $5 is in your account but you have cryptocurrency present. Looking for an ideal time to sell crypto now.' + '\n'), append=True)
         windowSimple.refresh()
-        sellSimpleAlgo(BTCrise, windowSimple)
+        sellSimpleAlgo(windowSimple)
     else:
         windowSimple['multiline'].update(value=("You don't have money in your account and you don't have cryptocurrency in your account. Can't operate." + '\n'), append=True)
         windowSimple.refresh() 
 
-def buySimpleAlgo(BTCdrop, windowSimple):
+def buySimpleAlgo(windowSimple):
     buyPercent = BTCdrop
     #initial list setup:
     pricetableBTC = list(range(1440))
@@ -264,11 +278,11 @@ def buySimpleAlgo(BTCdrop, windowSimple):
         if (percentage <= (float(buyPercent)/(-100))):
             windowSimple['multiline'].update(value=("Price has fallen " + str(abs(percentage*100)) + "% since algorithm startup. Buying BTC now." + '\n'), append=True)
             windowSimple.refresh()
-            buyCrypto()
+            buyCrypto(windowSimple)
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
         windowSimple.read(timeout=59000)
 
-def sellSimpleAlgo(BTCrise, windowSimple):
+def sellSimpleAlgo(windowSimple):
     sellPercent = BTCrise
     #initial list setup:
     pricetableBTC = list(range(1440))
@@ -293,7 +307,7 @@ def sellSimpleAlgo(BTCrise, windowSimple):
         if (percentage >= (float(sellPercent)/100)):
             windowSimple['multiline'].update(value=("Price has risen " + str(abs(percentage*100)) + "% since algorithm startup. Selling BTC now." + '\n'), append=True)
             windowSimple.refresh()
-            sellCrypto()
+            sellCrypto(windowSimple)
         #wait 59 seconds so robinhood doesn't kick me for sending too many requests:
         windowSimple.read(timeout=59000)
  
